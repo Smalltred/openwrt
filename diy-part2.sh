@@ -40,15 +40,10 @@ rm -f package/luci-app-openclash/root/etc/openclash/Country.mmdb
 rm -rf package/luci-app-openclash/root/etc/openclash/rule_provider
 cp -r "$PLUG/turboacc/luci-app-turboacc" package/
 
-# Passwall 依赖的辅助包 + Xray 核心
-for p in chinadns-ng dns2socks ipt2socks microsocks tcping xray-core; do
+# Passwall 依赖的辅助包（不预置 Xray，36MB 上传限制；启动后可在“组件更新”下载）
+for p in chinadns-ng dns2socks ipt2socks microsocks tcping; do
     cp -r "$PLUG/passwall-packages/$p" package/
 done
-
-# Xray 2026 源码要求 Go 1.24，而本源码树是 Go 1.21.7。
-# 固定到 v1.8.24（go.mod: go 1.21.4），Passwall 26.x 仍可使用。
-sed -i 's/^PKG_VERSION:=.*/PKG_VERSION:=1.8.24/' package/xray-core/Makefile
-sed -i 's/^PKG_HASH:=.*/PKG_HASH:=86e3e388c77cda4d8457a607356416c201c1f18bbed53f0a9e76a228508ff298/' package/xray-core/Makefile
 
 # Argon 主题（与 Aurora 共存，默认仍由 99-cr8809-custom 设为 Argon）
 rm -rf package/luci-theme-argon
