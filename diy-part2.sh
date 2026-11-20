@@ -31,6 +31,13 @@ cp -r "$PLUG/oaf/oaf" package/
 cp -r "$PLUG/oaf/open-app-filter" package/appfilter
 cp -r "$PLUG/passwall/luci-app-passwall" package/
 cp -r "$PLUG/openclash/luci-app-openclash" package/
+
+# U-Boot Web 上传受 36 MB fs 分区限制；去掉 OpenClash 可选大数据，
+# 这些文件可在 OpenWrt 启动后通过 OpenClash 的 GeoData/UI 下载。
+rm -rf package/luci-app-openclash/root/usr/share/openclash/ui
+rm -f package/luci-app-openclash/root/etc/openclash/GeoSite.dat
+rm -f package/luci-app-openclash/root/etc/openclash/Country.mmdb
+rm -rf package/luci-app-openclash/root/etc/openclash/rule_provider
 cp -r "$PLUG/turboacc/luci-app-turboacc" package/
 
 # Passwall 依赖的辅助包 + Xray 核心
