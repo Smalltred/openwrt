@@ -57,6 +57,12 @@ CONFIG_PACKAGE_luci-app-commands=y
 # 想加的包直接追加
 ```
 
+中文界面必须保留：
+
+```ini
+CONFIG_LUCI_LANG_zh_Hans=y
+```
+
 > Argon v3 的设置页已经内置在主题里，**不要**再加 `luci-app-argon-config`，否则会文件冲突。
 
 ### 改首次启动默认值
@@ -65,8 +71,11 @@ CONFIG_PACKAGE_luci-app-commands=y
 
 ### 改 Argon 主题本身
 
-建议 fork `jerrykuku/luci-theme-argon`，把 `diy-part1.sh` 里的 feed URL 换成你的 fork（并固定 tag/commit），
-这样每次云端编译都会用你的修改。
+Argon 不走 feed，而是在 `diy-part2.sh` 里直接 clone 到 `package/luci-theme-argon`。
+要改主题就 fork `jerrykuku/luci-theme-argon`，把 `diy-part2.sh` 里的 clone URL 换成你的 fork，
+并固定 tag/commit，这样每次云端编译都会用你的修改。
+
+> 单包仓库的根目录 Makefile 不会被 `feeds install` 识别，所以不要把它做成 feed。
 
 ### 给源码打补丁
 
@@ -91,7 +100,9 @@ CONFIG_PACKAGE_luci-app-commands=y
 
 ## 常见问题
 
-- **Argon 编译失败**：把 `diy-part1.sh` 的 tag 改成 `v3.0.0` 或 `v3.1.0` 再试。
+- **Argon 编译失败**：把 `diy-part2.sh` 里的 `--branch v3.1.4` 改成 `v3.0.0` 或 `v3.1.0` 再试。
+- **中文没生效**：确认 `.config` 里有 `CONFIG_LUCI_LANG_zh_Hans=y`。
+- **自定义文件没进固件**：`files/` 必须落到源码的 `openwrt/files/`，workflow 已按此复制。
 - **某个软件包不存在**：从 `.config` 删掉该包，`make defconfig` 会忽略未知符号。
 - **编译超时 / 磁盘不足**：workflow 已包含清理 runner 磁盘的步骤；若仍不足，减少软件包。
 - **没有生成 `.ubi`**：检查 `configs/redmi_ax3000.config` 里的 `CONFIG_TARGET_ipq50xx_arm_DEVICE_redmi_ax3000=y`。

@@ -16,6 +16,7 @@ env:
   REPO_URL: https://github.com/hzyitc/openwrt-redmi-ax3000
   REPO_BRANCH: ipq50xx-mainline-kernel-5.15-openwrt-23.05
   CONFIG_FILE: configs/redmi_ax3000.config
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
 
 jobs:
   build:
@@ -44,7 +45,7 @@ jobs:
       - name: Restore ccache
         uses: actions/cache@v4
         with:
-          path: ~/.ccache
+          path: ${{ github.workspace }}/.ccache
           key: ccache-${{ github.sha }}
           restore-keys: |
             ccache-
@@ -65,10 +66,15 @@ jobs:
       - name: Apply config and custom files
         run: |
           cp "$CONFIG_FILE" openwrt/.config
-          cp -r files/. openwrt/
+          mkdir -p openwrt/files
+          cp -r files/. openwrt/files/
           cd openwrt
           bash ../diy-part2.sh
           make defconfig
+          echo "=== selected theme / i18n ==="
+          grep -E "CONFIG_LUCI_LANG|CONFIG_PACKAGE_luci-theme-argon|CONFIG_PACKAGE_luci-i18n" .config | head -30
+          echo "=== argon package dir ==="
+          ls -d package/luci-theme-argon
 
       - name: Download package sources
         run: |
