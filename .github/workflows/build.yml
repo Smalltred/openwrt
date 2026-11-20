@@ -72,6 +72,10 @@ jobs:
           cd openwrt
           bash ../diy-part2.sh
           make defconfig
+          # dnsmasq-full 与基础 dnsmasq 文件冲突：强制只保留 dnsmasq-full
+          sed -i 's/^CONFIG_PACKAGE_dnsmasq=.*/# CONFIG_PACKAGE_dnsmasq is not set/' .config
+          grep -q '^CONFIG_PACKAGE_dnsmasq-full=y' .config || echo 'CONFIG_PACKAGE_dnsmasq-full=y' >> .config
+          grep -E "CONFIG_PACKAGE_dnsmasq(=| is not set)|CONFIG_PACKAGE_dnsmasq-full" .config
           echo "=== selected theme / i18n ==="
           grep -E "CONFIG_LUCI_LANG|CONFIG_PACKAGE_luci-theme-argon|CONFIG_PACKAGE_luci-i18n" .config | head -30
           echo "=== third-party packages ==="
