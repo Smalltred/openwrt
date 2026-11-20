@@ -81,6 +81,24 @@ Argon 不走 feed，而是在 `diy-part2.sh` 里直接 clone 到 `package/luci-t
 
 把 `*.patch` 放进 `patches/`，`diy-part2.sh` 会按 `-p1` 依次应用。
 
+## 第三方插件（已内置）
+
+| 插件 | 包名 | 说明 |
+| --- | --- | --- |
+| AdGuardHome | `luci-app-adguardhome` | 去广告 UI；AdGuardHome 二进制运行时安装 |
+| Aurora 主题 | `luci-theme-aurora` | 与 Argon 共存，可在 LuCI 切换 |
+| Lucky | `luci-app-lucky` + `lucky` | 内置 armv7 二进制 |
+| OAF | `luci-app-oaf` + `appfilter` + `kmod-oaf` | 内核模块，5.15 兼容性需实测 |
+| PassWall | `luci-app-passwall` + `xray-core` 1.8.24 | 只带 Xray 核心；其他核心在应用内安装 |
+| OpenClash | `luci-app-openclash` | 核心运行时下载，不占镜像 |
+| TurboACC | `luci-app-turboacc` | flow offload + BBR；fullcone 已关闭 |
+
+**未包含**：`daede`。它的 2026 源码要求 Go 1.24，而本源码树是 Go 1.21.7，
+编译必失败；后续可换预编译二进制或升级 Go 工具链再加。
+
+> 体积提醒：合并大分区后可用约 88 MB。workflow 会打印 `.ubi` 大小；
+> 超过约 85 MB 时需要精简（例如去掉 OpenClash 的 GeoSite/UI 或 PassWall 核心）。
+
 ## 刷机（前提）
 
 本仓库只负责**编译**。刷机前需要：
@@ -103,6 +121,10 @@ Argon 不走 feed，而是在 `diy-part2.sh` 里直接 clone 到 `package/luci-t
 - **Argon 编译失败**：把 `diy-part2.sh` 里的 `--branch v3.1.4` 改成 `v3.0.0` 或 `v3.1.0` 再试。
 - **中文没生效**：确认 `.config` 里有 `CONFIG_LUCI_LANG_zh_Hans=y`。
 - **自定义文件没进固件**：`files/` 必须落到源码的 `openwrt/files/`，workflow 已按此复制。
+- **OAF / TurboACC 内核模块失败**：workflow 用 `IGNORE_ERRORS=m` 继续编译，产物里可能缺这两个；
+  看日志里 `kmod-oaf/compile` 或 `kmod-nft-offload` 的报错。
+- **PassWall 没有核心**：默认只带 Xray 1.8.24；其他核心在 PassWall → 组件更新里安装。
+- **镜像太大**：减少 OpenClash 的 GeoSite/UI 或 PassWall 核心，或去掉 daed。
 - **某个软件包不存在**：从 `.config` 删掉该包，`make defconfig` 会忽略未知符号。
 - **编译超时 / 磁盘不足**：workflow 已包含清理 runner 磁盘的步骤；若仍不足，减少软件包。
 - **没有生成 `.ubi`**：检查 `configs/redmi_ax3000.config` 里的 `CONFIG_TARGET_ipq50xx_arm_DEVICE_redmi_ax3000=y`。
