@@ -1,0 +1,14 @@
+#!/bin/sh
+# CR8809 自定义固件首次启动默认值
+
+uci -q set system.@system[0].hostname='CR8809'
+uci -q set system.@system[0].timezone='CST-8'
+uci -q set system.@system[0].zonename='Asia/Shanghai'
+uci -q commit system
+
+uci -q set luci.main.lang='zh_cn'
+uci -q set luci.themes.Argon='/luci-static/argon'
+uci -q set luci.main.mediaurlbase='/luci-static/argon'
+uci -q commit luci
+
+exit 0
