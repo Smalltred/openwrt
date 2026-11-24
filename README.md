@@ -97,9 +97,11 @@ Argon 不走 feed，而是在 `diy-part2.sh` 里直接 clone 到 `package/luci-t
 | 工具 | `ca-bundle`、`wget-ssl`、`zoneinfo-asia` |
 | 无线 | `ath11k-firmware-ipq5018`、`kmod-ath11k`、`wpad-basic-wolfssl`（默认关闭射频） |
 
-> **体积硬约束**：U-Boot Web 恢复实测上限约 **14 MiB**（14.38 MiB 的镜像被拒，
-> 资源包内可用的两个镜像是 11.00 / 14.00 MiB）。因此使用 1 MB squashfs 块提高
-> xz 压缩率，并裁掉 `htop`/`nano`/`curl`/`ppp` 等非必需包。
+> **关于体积**：曾误判 U-Boot 有约 14 MiB 上限，实测**不成立** —— 14.38 MiB 的
+> 镜像（commit `26c7bb8`）已成功刷入并正常启动。真正的坑是 U-Boot 的
+> `/success.html` 会**误报“更新失败”**（疑似返回上一次尝试的残留状态），
+> 只要断电重启即可确认是否真的写入。本配置用 1 MB squashfs 块 + 裁掉
+> `htop`/`nano`/`curl`/`ppp` 进一步压到约 13.5 MiB，属于可选的体积优化。
 
 **有意不打包**（相对上一版减少约 65 MB 未压缩体积）：
 
@@ -134,8 +136,13 @@ Argon 不走 feed，而是在 `diy-part2.sh` 里直接 clone 到 `package/luci-t
 刷写步骤：
 
 1. 路由器断电，按住 Reset，上电保持 10 秒后松开。
-2. 电脑访问 <http://192.168.10.1/uboot.html>（用 Chrome，不要用 Firefox）。
-3. 上传编译出的 `.ubi`。
+2. 电脑访问 **`http://192.168.10.1/`（根页面，不是 `/uboot.html`）**，用 Chrome。
+   - `/uboot.html` 是**更新 U-Boot 本身**的页面（`POST /opboot.cgi`，字段 `opboot`），
+     把固件传到这里会被拒绝。
+   - 固件页面的实际接口是 **`POST /firmware.cgi`，字段名 `firmware`**，可直接用
+     `curl -F "firmware=@xxx.ubi" http://192.168.10.1/firmware.cgi` 上传。
+3. 上传后如果 `/success.html` 报“更新失败”，**不要急着重传** —— 该状态页会误报。
+   直接断电重启，看是否进入新系统（`/rom` 的 `opkg` 包数是最可靠的判据）。
 4. 重启后 OpenWrt 默认地址为 **`192.168.2.20`**（首次启动的 uci-defaults 已按单臂旁路由配置好）。
 
 > 写入 U-Boot 是不可逆步骤；没有备份和恢复手段时不要操作。
