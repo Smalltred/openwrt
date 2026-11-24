@@ -94,8 +94,12 @@ Argon 不走 feed，而是在 `diy-part2.sh` 里直接 clone 到 `package/luci-t
 | UI | `luci`、`luci-mod-admin-full`、`luci-app-firewall`、`luci-app-opkg`、`luci-theme-argon` |
 | 中文 | `luci-i18n-base-zh-cn`、`luci-i18n-firewall-zh-cn`、`luci-i18n-opkg-zh-cn` |
 | 转发 | `kmod-nft-offload`、`kmod-tcp-bbr` |
-| 工具 | `curl`、`ca-bundle`、`wget-ssl`、`htop`、`nano`、`zoneinfo-asia` |
+| 工具 | `ca-bundle`、`wget-ssl`、`zoneinfo-asia` |
 | 无线 | `ath11k-firmware-ipq5018`、`kmod-ath11k`、`wpad-basic-wolfssl`（默认关闭射频） |
+
+> **体积硬约束**：U-Boot Web 恢复实测上限约 **14 MiB**（14.38 MiB 的镜像被拒，
+> 资源包内可用的两个镜像是 11.00 / 14.00 MiB）。因此使用 1 MB squashfs 块提高
+> xz 压缩率，并裁掉 `htop`/`nano`/`curl`/`ppp` 等非必需包。
 
 **有意不打包**（相对上一版减少约 65 MB 未压缩体积）：
 
@@ -109,6 +113,7 @@ Argon 不走 feed，而是在 `diy-part2.sh` 里直接 clone 到 `package/luci-t
 | `luci-app-adguardhome` | ~0.5 MB | 未使用 |
 | `luci-theme-aurora` / `bootstrap` | ~1 MB | 只保留 Argon |
 | `luci-app-ttyd` / `commands` / `upnp` / `ddns` / `sqm` / `wol` | ~1 MB | SSH 可替代，旁路由不需要 |
+| `htop` / `nano` / `curl` / `ppp` / `pppoe` | ~1 MB | 控制体积；PPPoE 由中兴主路由承担 |
 
 需要重新加回代理时，在 `configs/redmi_ax3000.config` 追加对应 `CONFIG_PACKAGE_*`，
 并在 `diy-part2.sh` 恢复相应的 clone 与 `cp` 步骤（旧版可从 git 历史 `a2ad269` 取回）。
