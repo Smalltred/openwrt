@@ -16,12 +16,15 @@
 ├── .github/workflows/build.yml   # GitHub Actions 编译流程
 ├── configs/redmi_ax3000.config   # 设备 + 软件包配置
 ├── files/                        # 打包进固件的覆盖文件
-│   └── etc/
-│       ├── banner
-│       └── uci-defaults/99-cr8809-custom
+│   ├── etc/
+│   │   ├── banner
+│   │   ├── init.d/dns-failover               # DNS 降级守护（procd 常驻）
+│   │   ├── sysctl.d/99-bypass.conf           # 关 ICMP 重定向 + BBR
+│   │   └── uci-defaults/99-cr8809-custom     # 首次启动：旁路由 + DNS + 待命 DHCP
+│   └── usr/bin/dns-failover.sh
 ├── patches/                      # 可选源码补丁（*.patch，-p1）
-├── diy-part1.sh                  # 添加 Argon feed
-└── diy-part2.sh                  # 应用补丁、修正权限
+├── diy-part1.sh                  # 预留（当前为空）
+└── diy-part2.sh                  # clone Argon、应用补丁、修正权限
 ```
 
 ## 快速开始
@@ -52,8 +55,7 @@ git push -u origin master
 
 ```ini
 CONFIG_PACKAGE_luci-theme-argon=y
-CONFIG_PACKAGE_luci-app-ttyd=y
-CONFIG_PACKAGE_luci-app-commands=y
+CONFIG_PACKAGE_htop=y
 # 想加的包直接追加
 ```
 
@@ -81,23 +83,40 @@ Argon 不走 feed，而是在 `diy-part2.sh` 里直接 clone 到 `package/luci-t
 
 把 `*.patch` 放进 `patches/`，`diy-part2.sh` 会按 `-p1` 依次应用。
 
-## 第三方插件（已内置）
+## 内置软件包
 
-| 插件 | 包名 | 说明 |
+本固件定位为**有线单臂旁路由**：只负责 DNS 与转发，代理由 PVE 上的 mihomo 提供。
+因此镜像只保留运行所需的最小集合：
+
+| 类别 | 包 |
+| --- | --- |
+| 系统 | `dnsmasq-full`、`firewall4`（默认）、`dropbear`（默认） |
+| UI | `luci`、`luci-mod-admin-full`、`luci-app-firewall`、`luci-app-opkg`、`luci-theme-argon` |
+| 中文 | `luci-i18n-base-zh-cn`、`luci-i18n-firewall-zh-cn`、`luci-i18n-opkg-zh-cn` |
+| 转发 | `kmod-nft-offload`、`kmod-tcp-bbr` |
+| 工具 | `curl`、`ca-bundle`、`wget-ssl`、`htop`、`nano`、`zoneinfo-asia` |
+| 无线 | `ath11k-firmware-ipq5018`、`kmod-ath11k`、`wpad-basic-wolfssl`（默认关闭射频） |
+
+**有意不打包**（相对上一版减少约 65 MB 未压缩体积）：
+
+| 已移除 | 原体积 | 原因 |
 | --- | --- | --- |
-| AdGuardHome | `luci-app-adguardhome` | 去广告 UI；AdGuardHome 二进制运行时安装 |
-| Aurora 主题 | `luci-theme-aurora` | 与 Argon 共存，可在 LuCI 切换 |
-| Lucky | `luci-app-lucky` + `lucky` | 内置 armv7 二进制 |
-| OAF | `luci-app-oaf` + `appfilter` + `kmod-oaf` | 内核模块，5.15 兼容性需实测 |
-| PassWall | `luci-app-passwall` + `xray-core` 1.8.24 | 只带 Xray 核心；其他核心在应用内安装 |
-| OpenClash | `luci-app-openclash` | 核心运行时下载，不占镜像 |
-| TurboACC | `luci-app-turboacc` | flow offload + BBR；fullcone 已关闭 |
+| `xray-core` | 24.7 MB | 代理在 PVE |
+| `luci-app-openclash` | 22.1 MB | 代理在 PVE |
+| `lucky` + `luci-app-lucky` | 13.5 MB | 未使用 |
+| `luci-app-passwall` + 5 个辅助包 | ~5 MB | 未使用 |
+| `luci-app-oaf` + `appfilter` + `kmod-oaf` | ~2.1 MB | 未使用 |
+| `luci-app-adguardhome` | ~0.5 MB | 未使用 |
+| `luci-theme-aurora` / `bootstrap` | ~1 MB | 只保留 Argon |
+| `luci-app-ttyd` / `commands` / `upnp` / `ddns` / `sqm` / `wol` | ~1 MB | SSH 可替代，旁路由不需要 |
+
+需要重新加回代理时，在 `configs/redmi_ax3000.config` 追加对应 `CONFIG_PACKAGE_*`，
+并在 `diy-part2.sh` 恢复相应的 clone 与 `cp` 步骤（旧版可从 git 历史 `a2ad269` 取回）。
 
 **未包含**：`daede`。它的 2026 源码要求 Go 1.24，而本源码树是 Go 1.21.7，
 编译必失败；后续可换预编译二进制或升级 Go 工具链再加。
 
-> 体积提醒：合并大分区后可用约 88 MB。workflow 会打印 `.ubi` 大小；
-> 超过约 85 MB 时需要精简（例如去掉 OpenClash 的 GeoSite/UI 或 PassWall 核心）。
+> 体积提醒：合并大分区后可用约 88 MB。workflow 会打印 `.ubi` 大小。
 
 ## 刷机（前提）
 
@@ -112,7 +131,7 @@ Argon 不走 feed，而是在 `diy-part2.sh` 里直接 clone 到 `package/luci-t
 1. 路由器断电，按住 Reset，上电保持 10 秒后松开。
 2. 电脑访问 <http://192.168.10.1/uboot.html>（用 Chrome，不要用 Firefox）。
 3. 上传编译出的 `.ubi`。
-4. 重启后 OpenWrt 默认地址为 `192.168.1.1`。
+4. 重启后 OpenWrt 默认地址为 **`192.168.2.20`**（首次启动的 uci-defaults 已按单臂旁路由配置好）。
 
 > 写入 U-Boot 是不可逆步骤；没有备份和恢复手段时不要操作。
 
@@ -121,10 +140,11 @@ Argon 不走 feed，而是在 `diy-part2.sh` 里直接 clone 到 `package/luci-t
 - **Argon 编译失败**：把 `diy-part2.sh` 里的 `--branch v3.1.4` 改成 `v3.0.0` 或 `v3.1.0` 再试。
 - **中文没生效**：确认 `.config` 里有 `CONFIG_LUCI_LANG_zh_Hans=y`。
 - **自定义文件没进固件**：`files/` 必须落到源码的 `openwrt/files/`，workflow 已按此复制。
-- **OAF / TurboACC 内核模块失败**：workflow 用 `IGNORE_ERRORS=m` 继续编译，产物里可能缺这两个；
-  看日志里 `kmod-oaf/compile` 或 `kmod-nft-offload` 的报错。
-- **PassWall 没有核心**：默认只带 Xray 1.8.24；其他核心在 PassWall → 组件更新里安装。
-- **镜像太大**：减少 OpenClash 的 GeoSite/UI 或 PassWall 核心，或去掉 daed。
+- **旁路由不生效**：确认 uci-defaults 已执行（`uci get network.lan.ipaddr` 应为 `192.168.2.20`），
+  且 `sysctl net.ipv4.conf.all.send_redirects` 为 `0`；否则客户端会绕过本机直连 PVE。
+- **降级没触发**：看 `cat /tmp/dns-failover.state` 和 `/root/dns-failover.log`，
+  确认 `/etc/init.d/dns-failover` 已 enable、`nslookup www.baidu.com 192.168.2.7` 有响应。
+- **镜像太大**：本配置已移除全部代理组件；若再加包，优先检查 OpenClash 与其核心体积。
 - **某个软件包不存在**：从 `.config` 删掉该包，`make defconfig` 会忽略未知符号。
 - **编译超时 / 磁盘不足**：workflow 已包含清理 runner 磁盘的步骤；若仍不足，减少软件包。
 - **没有生成 `.ubi`**：检查 `configs/redmi_ax3000.config` 里的 `CONFIG_TARGET_ipq50xx_arm_DEVICE_redmi_ax3000=y`。

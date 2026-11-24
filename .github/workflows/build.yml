@@ -78,10 +78,12 @@ jobs:
           grep -E "CONFIG_PACKAGE_dnsmasq(=| is not set)|CONFIG_PACKAGE_dnsmasq-full" .config
           echo "=== selected theme / i18n ==="
           grep -E "CONFIG_LUCI_LANG|CONFIG_PACKAGE_luci-theme-argon|CONFIG_PACKAGE_luci-i18n" .config | head -30
-          echo "=== third-party packages ==="
-          grep -E "CONFIG_PACKAGE_(luci-app-(adguardhome|lucky|oaf|passwall|openclash|turboacc)|luci-theme-(argon|aurora)|xray-core|lucky)" .config || true
+          echo "=== key packages ==="
+          grep -E "CONFIG_PACKAGE_(luci-theme-argon|dnsmasq-full|kmod-nft-offload|kmod-tcp-bbr|luci-i18n-(base|firewall|opkg)-zh-cn)" .config || true
           echo "=== argon package dir ==="
           ls -d package/luci-theme-argon
+          echo "=== baked files ==="
+          ls -l files/etc/init.d/ files/usr/bin/ files/etc/sysctl.d/
 
       - name: Download package sources
         run: |
